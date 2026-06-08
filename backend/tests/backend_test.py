@@ -13,7 +13,7 @@ BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://speed-reader-8.previ
 API = f"{BASE_URL}/api"
 
 DEMO_EMAIL = "demo@wordrush.app"
-DEMO_PASSWORD = "Demo1234"
+DEMO_PASSWORD = os.environ.get("WR_DEMO_PASSWORD", "Demo1234")
 
 
 # ---------- Fixtures ----------
