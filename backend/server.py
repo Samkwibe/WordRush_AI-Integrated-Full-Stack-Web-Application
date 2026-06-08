@@ -16,7 +16,6 @@ from datetime import datetime, timezone, timedelta
 import bcrypt
 import jwt
 import httpx
-from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 
 ROOT_DIR = Path(__file__).parent
@@ -26,7 +25,7 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
+OPENROUTER_API_KEY = os.environ.get('OPEN_ROUTER_API_KEY')
 JWT_SECRET = os.environ['JWT_SECRET']
 JWT_ALG = "HS256"
 SESSION_TTL_DAYS = 7
@@ -52,15 +51,31 @@ def _extract_json(text: str):
 
 
 async def _llm_chat(system_message: str, user_text: str) -> str:
-    if not EMERGENT_LLM_KEY:
-        raise HTTPException(status_code=500, detail="LLM key not configured")
-    chat = LlmChat(
-        api_key=EMERGENT_LLM_KEY,
-        session_id=f"wordgame-{uuid.uuid4()}",
-        system_message=system_message,
-    ).with_model("anthropic", "claude-sonnet-4-6")
-    response = await chat.send_message(UserMessage(text=user_text))
-    return response if isinstance(response, str) else str(response)
+    if not OPENROUTER_API_KEY:
+        raise HTTPException(status_code=500, detail="LLM key not configured. Set OPEN_ROUTER_API_KEY in backend/.env")
+    async with httpx.AsyncClient(timeout=120.0) as http_client:
+        resp = await http_client.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "http://localhost:3000",
+                "X-Title": "WordRush",
+            },
+            json={
+                "model": "anthropic/claude-sonnet-4",
+                "max_tokens": 2048,
+                "messages": [
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": user_text},
+                ],
+            },
+        )
+        if resp.status_code != 200:
+            logging.error(f"OpenRouter API error {resp.status_code}: {resp.text}")
+            raise HTTPException(status_code=502, detail=f"LLM API error: {resp.status_code}")
+        data = resp.json()
+        return data["choices"][0]["message"]["content"]
 
 
 def _hash_pw(pw: str) -> str:
@@ -254,7 +269,7 @@ async def root():
 
 @api_router.get("/health")
 async def health():
-    return {"status": "ok", "llm_configured": bool(EMERGENT_LLM_KEY)}
+    return {"status": "ok", "llm_configured": bool(OPENROUTER_API_KEY)}
 
 
 @api_router.post("/generate-words", response_model=GenerateWordsResponse)

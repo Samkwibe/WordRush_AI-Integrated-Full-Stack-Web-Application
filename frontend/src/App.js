@@ -18,7 +18,7 @@ import { ThemeProvider } from "@/context/ThemeContext";
 
 function AppRouter() {
   const location = useLocation();
-  // Handle Emergent OAuth callback fragment synchronously during render to avoid races
+  // Handle OAuth callback fragment synchronously during render to avoid races
   if (location.hash?.includes("session_id=")) return <AuthCallback />;
   return (
     <>
