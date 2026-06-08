@@ -1,0 +1,86 @@
+{
+  "theme": "light",
+  "archetype": "3 (Pastel & Soft) with Neo-Brutalist Twist",
+  "colors": {
+    "background": "#FDFBF7",
+    "surface": "#FFFFFF",
+    "primary": "#FFB8D1",
+    "secondary": "#A8E6CF",
+    "accent": "#FFD3B6",
+    "text_main": "#121212",
+    "text_muted": "#4A4A4A",
+    "border": "#121212",
+    "interactive": {
+      "button_primary_bg": "#FFB8D1",
+      "button_hover_bg": "#FFA4C4",
+      "button_text": "#121212"
+    }
+  },
+  "typography": {
+    "font_family_heading": "'Outfit', sans-serif",
+    "font_family_body": "'DM Sans', sans-serif",
+    "h1": "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight",
+    "h2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight",
+    "h3": "text-xl sm:text-2xl font-bold",
+    "body": "text-base leading-relaxed font-medium",
+    "label": "text-sm font-bold uppercase tracking-[0.1em]"
+  },
+  "spacing_and_layout": {
+    "container_padding": "p-6 sm:p-8 lg:p-12",
+    "grid_gap": "gap-6 sm:gap-8 lg:gap-12",
+    "card_padding": "p-6 sm:p-8",
+    "border_radius": "rounded-xl"
+  },
+  "surfaces_and_shadows": {
+    "style": "Neo-Brutalism",
+    "border": "border-[3px] border-[#121212]",
+    "card_shadow": "shadow-[6px_6px_0px_#121212]",
+    "card_hover": "hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0px_#121212] transition-all duration-200",
+    "button_shadow": "shadow-[4px_4px_0px_#121212]",
+    "button_active": "active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-100"
+  },
+  "components_instructions": {
+    "general": "Do not use standard Shadcn subtle shadows. Override all card and button styles with the Neo-Brutalist borders (border-[3px] border-[#121212]) and hard shadows.",
+    "buttons": "Must have thick borders, bold text, and hard offset shadows. On click, the button should translate down and right to meet the shadow.",
+    "game_mode_cards": "Use different pastel background colors for each game mode card. Example: Flash Cards = primary (#FFB8D1), Speed Reading = secondary (#A8E6CF), Memory Match = accent (#FFD3B6).",
+    "navigation": "Sticky top nav with a solid border-b-[3px] border-[#121212]. Background should be solid white (#FFFFFF).",
+    "icons": "Use lucide-react with strokeWidth={2.5} to match the bold, chunky aesthetic."
+  },
+  "accessibility": {
+    "contrast": "Ensure text-to-background contrast is high. The deep charcoal text (#121212) on pastel backgrounds exceeds WCAG AAA standards.",
+    "focus_states": "focus:outline-none focus:ring-4 focus:ring-black focus:ring-offset-2",
+    "data_testid": "MANDATORY on all interactive and key informational elements (e.g. data-testid='mode-flash-cards-btn')."
+  },
+  "motion_and_interactions": {
+    "hover_state": "Translate elements slightly along X and Y axes, reducing the hard shadow size to simulate pressing.",
+    "transitions": "transition-transform duration-150 ease-out",
+    "game_feedback": "Use pop and bounce keyframes for correct/incorrect answers to create a playful feel."
+  },
+  "media": {
+    "image_urls": [
+      {
+        "url": "https://images.unsplash.com/photo-1635377090186-036bca445c6b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA0MTJ8MHwxfHNlYXJjaHwyfHxjb2xvcmZ1bCUyMGdlb21ldHJpYyUyMHNoYXBlcyUyMHBhc3RlbHxlbnwwfHx8fDE3ODA4ODExNDR8MA&ixlib=rb-4.1.0&q=85",
+        "category": "background",
+        "description": "Colorful geometric shapes for abstract dashboard backgrounds or empty states."
+      },
+      {
+        "url": "https://images.pexels.com/photos/7135013/pexels-photo-7135013.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "hero",
+        "description": "Soft pastel background for the main splash screen or settings page."
+      },
+      {
+        "url": "https://images.pexels.com/photos/9227488/pexels-photo-9227488.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "feature",
+        "description": "Vibrant puzzle pieces for Memory Matching mode."
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "You are building a game app for speed reading and memory.",
+    "Implement the UI using a Neo-Brutalist design language: thick black borders (border-[3px]), hard black drop shadows (shadow-[4px_4px_0px_#121212]), and soft pastel backgrounds.",
+    "Avoid subtle gradients or soft blurs. Everything should feel tactile, bold, and playful.",
+    "Use Outfit for headings and DM Sans for body text.",
+    "For the Game Modes, create large clickable cards with distinct pastel backgrounds.",
+    "Remember to include data-testid attributes on all interactive elements."
+  ]
+}
