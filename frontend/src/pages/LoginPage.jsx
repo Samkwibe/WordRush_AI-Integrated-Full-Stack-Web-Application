@@ -2,13 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { signup, login } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
-import { LogIn, UserPlus, Mail, Lock, User as UserIcon, Loader2 } from "lucide-react";
-
-// REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-function googleLogin() {
-  const redirectUrl = window.location.origin + "/auth/callback";
-  window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
-}
+import { LogIn, UserPlus, Mail, Lock, User as UserIcon, Loader2, Eye, EyeOff, CheckCircle2, Zap, BarChart3, Trophy } from "lucide-react";
 
 export default function LoginPage() {
   const { setUser } = useAuth();
@@ -22,6 +16,38 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  const getAuthErrorMessage = (error) => {
+    const status = error?.response?.status;
+    const detail = error?.response?.data?.detail;
+
+    if (!error?.response) return "Unable to connect to the server. Make sure the backend is running.";
+
+    if (typeof detail === "string") {
+      const lower = detail.toLowerCase();
+      if (lower.includes("already registered") || lower.includes("already exists")) {
+        return "An account with this email already exists. Try logging in instead.";
+      }
+      if (lower.includes("invalid email or password")) {
+        return "Invalid email or password. Please try again.";
+      }
+      return detail;
+    }
+
+    if (status === 422 && Array.isArray(detail)) {
+      const hasEmailError = detail.some((d) => (d?.loc || []).includes("email"));
+      const hasPasswordError = detail.some((d) => (d?.loc || []).includes("password"));
+      if (hasEmailError) return "Please enter a valid email address.";
+      if (hasPasswordError) return "Password must be at least 6 characters.";
+      return "Please check your input and try again.";
+    }
+
+    if (status === 401) return "Invalid email or password.";
+    if (status === 400 && mode === "signup") return "An account with this email already exists.";
+
+    return "Something went wrong. Please try again.";
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -34,89 +60,204 @@ export default function LoginPage() {
       setUser(u);
       navigate(redirectTo, { replace: true });
     } catch (e2) {
-      setErr(e2?.response?.data?.detail || "Could not authenticate.");
+      console.error("[Auth Error]", {
+        mode,
+        status: e2?.response?.status,
+        data: e2?.response?.data,
+        message: e2?.message,
+      });
+      setErr(getAuthErrorMessage(e2));
     } finally {
       setLoading(false);
     }
   };
 
+  const inputClass = [
+    "w-full h-12 rounded-xl font-semibold text-[15px] tracking-[0.01em]",
+    "bg-[var(--surface)] border-[3px] border-[var(--ink)] shadow-[3px_3px_0_0_var(--ink)]",
+    "outline-none transition-all duration-200",
+    "focus:shadow-[5px_5px_0_0_var(--ink)]",
+    "placeholder:text-[var(--muted)] placeholder:opacity-70 placeholder:font-medium",
+    "text-[var(--ink)]",
+  ].join(" ");
+
   return (
-    <div data-testid="login-page" className="max-w-md mx-auto px-4 sm:px-6 py-12">
-      <div className="nb-card p-7 bg-white">
-        <h1 className="font-display font-black text-3xl">
-          {mode === "signup" ? "Create account" : "Welcome back"}
-        </h1>
-        <p className="text-sm text-[#555] mt-1">
-          Sync stats & word lists across devices. Earn badges. Compete on the leaderboard.
-        </p>
+    <div data-testid="login-page" className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 sm:px-6 py-8">
+      <div className="w-full max-w-[480px]">
+        <div className="nb-card p-6 sm:p-8">
+          {/* Tab Switcher */}
+          <div className="flex rounded-xl border-[3px] border-[var(--ink)] bg-[var(--soft)] p-1 mb-6">
+            <button
+              type="button"
+              data-testid="switch-login"
+              onClick={() => { setMode("login"); setErr(""); }}
+              className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-black uppercase tracking-wider transition-all duration-200 ${
+                mode === "login"
+                  ? "bg-[var(--ink)] text-[var(--bg)] shadow-sm"
+                  : "text-[var(--muted)] hover:text-[var(--ink)]"
+              }`}
+            >
+              Log in
+            </button>
+            <button
+              type="button"
+              data-testid="switch-signup"
+              onClick={() => { setMode("signup"); setErr(""); }}
+              className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-black uppercase tracking-wider transition-all duration-200 ${
+                mode === "signup"
+                  ? "bg-[var(--ink)] text-[var(--bg)] shadow-sm"
+                  : "text-[var(--muted)] hover:text-[var(--ink)]"
+              }`}
+            >
+              Sign up
+            </button>
+          </div>
 
-        <button
-          data-testid="google-login-btn"
-          onClick={googleLogin}
-          className="nb-btn nb-btn-ghost w-full justify-center mt-6"
-        >
-          <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true">
-            <path fill="#FFC107" d="M43.6 20.5h-1.9V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.2 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
-            <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16.3 19 13 24 13c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.2 29.3 4 24 4 16.3 4 9.6 8.5 6.3 14.7z" />
-            <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.5-5.2l-6.2-5.2C29.4 35 26.9 36 24 36c-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.5 39.5 16.2 44 24 44z" />
-            <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4-4 5.4l6.2 5.2C41.2 35.4 44 30.1 44 24c0-1.3-.1-2.4-.4-3.5z" />
-          </svg>
-          Continue with Google
-        </button>
+          {/* Header */}
+          <div className="mb-6">
+            <h1 className="font-display font-black text-3xl sm:text-4xl leading-tight">
+              {mode === "signup" ? "Create your account" : "Welcome back"}
+            </h1>
+            <p className="text-sm text-[var(--muted)] mt-2 leading-relaxed">
+              {mode === "signup"
+                ? "Sign up to sync your progress across devices and compete on the leaderboard."
+                : "Log in to access your saved stats, word lists, and achievements."}
+            </p>
+          </div>
 
-        <div className="my-5 flex items-center gap-3">
-          <div className="flex-1 h-[2px] bg-[#121212]" />
-          <span className="label-cap">or</span>
-          <div className="flex-1 h-[2px] bg-[#121212]" />
-        </div>
+          {/* Form */}
+          <form onSubmit={submit} className="space-y-4">
+            {mode === "signup" && (
+              <label className="block">
+                <span className="label-cap">Name</span>
+                <div className="relative mt-1.5">
+                  <UserIcon
+                    size={16}
+                    strokeWidth={2.5}
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none"
+                  />
+                  <input
+                    data-testid="signup-name"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className={inputClass}
+                    style={{ paddingLeft: "2.75rem", paddingRight: "0.875rem" }}
+                    placeholder="Your name"
+                  />
+                </div>
+              </label>
+            )}
 
-        <form onSubmit={submit} className="space-y-3">
-          {mode === "signup" && (
             <label className="block">
-              <span className="label-cap">Name</span>
-              <div className="relative mt-1">
-                <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555]" size={16} strokeWidth={2.5} />
-                <input data-testid="signup-name" required value={name} onChange={(e) => setName(e.target.value)} className="nb-input pl-9" placeholder="Your name" />
+              <span className="label-cap">Email</span>
+              <div className="relative mt-1.5">
+                <Mail
+                  size={16}
+                  strokeWidth={2.5}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none"
+                />
+                <input
+                  data-testid="auth-email"
+                  required
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={inputClass}
+                  style={{ paddingLeft: "2.75rem", paddingRight: "0.875rem" }}
+                  placeholder="you@example.com"
+                />
               </div>
             </label>
-          )}
-          <label className="block">
-            <span className="label-cap">Email</span>
-            <div className="relative mt-1">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555]" size={16} strokeWidth={2.5} />
-              <input data-testid="auth-email" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="nb-input pl-9" placeholder="you@example.com" />
-            </div>
-          </label>
-          <label className="block">
-            <span className="label-cap">Password</span>
-            <div className="relative mt-1">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555]" size={16} strokeWidth={2.5} />
-              <input data-testid="auth-password" required type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="nb-input pl-9" placeholder="••••••••" />
-            </div>
-          </label>
-          {err && <div className="nb-badge bg-[#FFB8D1]" data-testid="auth-error">{err}</div>}
-          <button data-testid="auth-submit" disabled={loading} className="nb-btn w-full justify-center">
-            {loading
-              ? <><Loader2 size={16} className="animate-spin" /> Working…</>
-              : mode === "signup"
-                ? <><UserPlus size={16} strokeWidth={3} /> Create account</>
-                : <><LogIn size={16} strokeWidth={3} /> Log in</>}
-          </button>
-        </form>
 
-        <div className="mt-4 text-sm text-center">
-          {mode === "signup" ? (
-            <>Already have an account?{" "}
-              <button data-testid="switch-login" onClick={() => setMode("login")} className="font-bold underline">Log in</button>
-            </>
-          ) : (
-            <>New to WordRush?{" "}
-              <button data-testid="switch-signup" onClick={() => setMode("signup")} className="font-bold underline">Create account</button>
-            </>
-          )}
+            <label className="block">
+              <span className="label-cap">Password</span>
+              <div className="relative mt-1.5">
+                <Lock
+                  size={16}
+                  strokeWidth={2.5}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none"
+                />
+                <input
+                  data-testid="auth-password"
+                  required
+                  type={showPassword ? "text" : "password"}
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={inputClass}
+                  style={{ paddingLeft: "2.75rem", paddingRight: "3rem" }}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] rounded-lg transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {mode === "signup" && (
+                <p className="mt-1.5 text-xs text-[var(--muted)]">At least 6 characters</p>
+              )}
+            </label>
+
+            {/* Error / Info Banner */}
+            {err ? (
+              <div
+                className="rounded-xl border-[3px] border-[var(--ink)] bg-[#FFD4E3] px-4 py-3 text-sm font-semibold text-[#3a1b25] shadow-[3px_3px_0_0_var(--ink)]"
+                data-testid="auth-error"
+              >
+                {err}
+              </div>
+            ) : (
+              <div className="rounded-xl border-[3px] border-[var(--ink)] bg-[#D8F6E6] px-4 py-3 text-sm font-semibold text-[#113626] flex items-center gap-2 shadow-[3px_3px_0_0_var(--ink)]">
+                <CheckCircle2 size={16} strokeWidth={2.5} />
+                <span>
+                  {mode === "signup"
+                    ? "Create an account to unlock cloud sync and achievements."
+                    : "Sign in to sync your progress across devices."}
+                </span>
+              </div>
+            )}
+
+            {/* Submit */}
+            <button
+              data-testid="auth-submit"
+              disabled={loading}
+              className="nb-btn w-full justify-center h-12"
+            >
+              {loading ? (
+                <><Loader2 size={16} className="animate-spin" /> Working…</>
+              ) : mode === "signup" ? (
+                <><UserPlus size={16} strokeWidth={3} /> Create account</>
+              ) : (
+                <><LogIn size={16} strokeWidth={3} /> Log in</>
+              )}
+            </button>
+          </form>
+
+          {/* Guest Link */}
+          <div className="mt-5 text-center">
+            <Link to="/" className="text-sm text-[var(--muted)] underline underline-offset-2 hover:text-[var(--ink)] transition-colors">
+              Continue as guest
+            </Link>
+          </div>
         </div>
-        <div className="mt-2 text-center">
-          <Link to="/" className="text-xs text-[#555] underline">Continue as guest</Link>
+
+        {/* Feature highlights below card */}
+        <div className="grid grid-cols-3 gap-3 mt-5">
+          {[
+            { icon: Zap, label: "4 game modes", color: "#FFB8D1" },
+            { icon: BarChart3, label: "Track stats", color: "#A8E6CF" },
+            { icon: Trophy, label: "Leaderboard", color: "#FFD3B6" },
+          ].map((f, i) => (
+            <div key={i} className="nb-card p-3 text-center hover:translate-y-0">
+              <f.icon className="mx-auto" strokeWidth={2.5} size={18} style={{ color: "var(--ink)" }} />
+              <div className="text-[10px] font-bold mt-1.5 uppercase tracking-wider">{f.label}</div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

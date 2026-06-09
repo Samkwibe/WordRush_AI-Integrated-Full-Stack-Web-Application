@@ -52,7 +52,7 @@ function emptyStats() {
     flash: { played: 0, correct: 0, total: 0, best: 0 },
     speed: { played: 0, correct: 0, total: 0, bestWpm: 0 },
     match: { played: 0, bestTime: null, totalMoves: 0 },
-    code: { played: 0, bestWpm: 0, bestAccuracy: 0 },
+    code: { played: 0, bestWpm: 0, bestAccuracy: 0, challengesPlayed: 0, challengeScore: 0, lessonsCompleted: 0, topicsCompleted: [] },
     streak: { current: 0, longest: 0, last_day: null },
     history: [],
     achievements: [],
@@ -122,6 +122,28 @@ export function recordCodeSession({ wpm, accuracy, language }) {
   if (wpm > s.code.bestWpm) s.code.bestWpm = wpm;
   if (accuracy > s.code.bestAccuracy) s.code.bestAccuracy = accuracy;
   s.history.unshift({ mode: "code", wpm, accuracy, language, at: Date.now() });
+  s.history = s.history.slice(0, 30);
+  return commit(s);
+}
+
+export function recordChallengeSession({ correct, total, language }) {
+  const s = getStats();
+  s.totalSessions += 1;
+  s.code.challengesPlayed = (s.code.challengesPlayed || 0) + 1;
+  s.code.challengeScore = (s.code.challengeScore || 0) + correct;
+  s.history.unshift({ mode: "challenge", correct, total, language, at: Date.now() });
+  s.history = s.history.slice(0, 30);
+  return commit(s, { challengePerfect: correct === total && total > 0 });
+}
+
+export function recordLessonSession({ topic, language }) {
+  const s = getStats();
+  s.totalSessions += 1;
+  s.code.lessonsCompleted = (s.code.lessonsCompleted || 0) + 1;
+  const topics = new Set(s.code.topicsCompleted || []);
+  topics.add(topic);
+  s.code.topicsCompleted = Array.from(topics);
+  s.history.unshift({ mode: "lesson", topic, language, at: Date.now() });
   s.history = s.history.slice(0, 30);
   return commit(s);
 }

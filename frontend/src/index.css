@@ -177,3 +177,95 @@ h1, h2, h3, h4, .font-display {
         column-gap: inherit; row-gap: inherit; gap: inherit;
     }
 }
+
+/* ===== Code Lab: Syntax Highlighting ===== */
+.syn-keyword  { color: #8B5CF6; font-weight: 700; }
+.syn-string   { color: #059669; }
+.syn-comment  { color: #9CA3AF; font-style: italic; }
+.syn-number   { color: #D97706; }
+.syn-function { color: #2563EB; }
+.syn-operator { color: #DC2626; }
+.syn-normal   { color: var(--ink); opacity: 0.5; }
+.syn-line-num { color: var(--muted); font-size: 0.7rem; line-height: 1.75rem; }
+
+/* Character states for typing */
+.code-char-correct {
+    color: var(--ink) !important;
+    opacity: 1 !important;
+    background: rgba(168, 230, 207, 0.35);
+    border-radius: 1px;
+    font-weight: inherit;
+}
+.code-char-wrong {
+    color: #fff !important;
+    opacity: 1 !important;
+    background: #FF6FA3;
+    border-radius: 2px;
+    font-weight: inherit;
+}
+.code-char-cursor {
+    opacity: 1 !important;
+    background: rgba(255, 211, 182, 0.6);
+    border-radius: 2px;
+    animation: cursorPulse 1.2s ease-in-out infinite;
+}
+.code-char-pending {
+    transition: color 0.1s ease;
+}
+
+@keyframes cursorPulse {
+    0%, 100% { background: rgba(255, 211, 182, 0.6); }
+    50% { background: rgba(255, 211, 182, 0.2); }
+}
+
+/* Code editor block — dark theme for code */
+.code-editor-block {
+    background: #1a1a2e;
+    border-radius: 12px;
+    border: 3px solid var(--ink);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.15);
+}
+.code-editor-block .syn-normal   { color: #d4d4d8; opacity: 0.65; }
+.code-editor-block .syn-keyword  { color: #c084fc; font-weight: 700; }
+.code-editor-block .syn-string   { color: #6ee7b7; }
+.code-editor-block .syn-comment  { color: #6b7280; font-style: italic; }
+.code-editor-block .syn-number   { color: #fbbf24; }
+.code-editor-block .syn-function { color: #60a5fa; }
+.code-editor-block .syn-operator { color: #fb923c; }
+.code-editor-block .syn-line-num { color: #4b5563; }
+.code-editor-block .code-char-correct {
+    color: #e2e8f0 !important;
+    background: rgba(110, 231, 183, 0.2);
+}
+.code-editor-block .code-char-wrong {
+    color: #fff !important;
+    background: #e11d48;
+}
+.code-editor-block .code-char-cursor {
+    color: #fef9c3 !important;
+    background: rgba(251, 191, 36, 0.35);
+}
+.code-editor-block .code-char-pending .syn-normal,
+.code-editor-block .code-char-pending.syn-normal {
+    color: #6b7280;
+}
+
+/* Code typing input area */
+.code-input-area {
+    font-size: 13px;
+    line-height: 1.75;
+    tab-size: 4;
+    -moz-tab-size: 4;
+    letter-spacing: 0.01em;
+}
+
+/* Dark mode adjustments for code editor */
+[data-theme="dark"] .code-editor-block {
+    background: #0f0f1a;
+    border-color: var(--ink);
+}
+[data-theme="dark"] .code-char-correct {
+    color: var(--ink) !important;
+    background: rgba(110, 231, 183, 0.15);
+}
+

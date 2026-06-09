@@ -7,7 +7,14 @@
 - [x] Update this TODO with completed steps.
 
 ## Auth Debug Task
-- [ ] Verify frontend auth environment config (`REACT_APP_BACKEND_URL`) and API base URL behavior.
-- [ ] Run quick diagnostics for login/signup/google callback failure points.
-- [ ] Implement minimal code fixes based on confirmed failures.
-- [ ] Re-test auth flows and summarize root cause.
+- [x] Verify frontend auth environment config (`REACT_APP_BACKEND_URL`) and API base URL behavior.
+- [x] Run quick diagnostics for login/signup/google callback failure points.
+- [x] Implement minimal code fixes based on confirmed failures.
+- [x] Re-test auth flows and summarize root cause.
+
+## Login/Signup UI Polish Task
+- [ ] Update `frontend/src/pages/LoginPage.jsx` visual hierarchy and spacing without changing auth behavior.
+- [ ] Keep all test IDs/selectors and auth logic unchanged.
+- [ ] Improve mode switch, form presentation, error styling, and button states.
+- [ ] Verify mobile-friendly spacing and no overflow regressions.
+- [ ] Run Playwright auth suite and record results.

@@ -31,8 +31,16 @@ export async function generatePassage({ topic, difficulty, language, length }) {
   const { data } = await http.post(`/generate-passage`, { topic, difficulty, language, length });
   return data;
 }
-export async function generateCode({ language, difficulty }) {
-  const { data } = await http.post(`/generate-code`, { language, difficulty });
+export async function generateCode({ language, difficulty, topic }) {
+  const { data } = await http.post(`/generate-code`, { language, difficulty, ...(topic ? { topic } : {}) });
+  return data;
+}
+export async function generateChallenge({ language, difficulty, topic }) {
+  const { data } = await http.post(`/generate-challenge`, { language, difficulty, ...(topic ? { topic } : {}) });
+  return data;
+}
+export async function generateLesson({ language, topic, difficulty }) {
+  const { data } = await http.post(`/generate-lesson`, { language, topic, difficulty });
   return data;
 }
 

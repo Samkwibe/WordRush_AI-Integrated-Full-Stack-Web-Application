@@ -16,16 +16,19 @@ from datetime import datetime, timezone, timedelta
 import bcrypt
 import jwt
 import httpx
+import certifi
 
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
+client = AsyncIOMotorClient(mongo_url, tlsCAFile=certifi.where())
 db = client[os.environ['DB_NAME']]
 
 OPENROUTER_API_KEY = os.environ.get('OPEN_ROUTER_API_KEY')
+OPENROUTER_MODEL = os.environ.get('OPENROUTER_MODEL', 'qwen/qwen3-coder:free')
+FALLBACK_MODEL = 'google/gemma-4-31b-it:free'
 JWT_SECRET = os.environ['JWT_SECRET']
 JWT_ALG = "HS256"
 SESSION_TTL_DAYS = 7
@@ -53,29 +56,47 @@ def _extract_json(text: str):
 async def _llm_chat(system_message: str, user_text: str) -> str:
     if not OPENROUTER_API_KEY:
         raise HTTPException(status_code=500, detail="LLM key not configured. Set OPEN_ROUTER_API_KEY in backend/.env")
+
+    models_to_try = [OPENROUTER_MODEL]
+    if FALLBACK_MODEL and FALLBACK_MODEL != OPENROUTER_MODEL:
+        models_to_try.append(FALLBACK_MODEL)
+
+    last_error = None
     async with httpx.AsyncClient(timeout=120.0) as http_client:
-        resp = await http_client.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "http://localhost:3000",
-                "X-Title": "WordRush",
-            },
-            json={
-                "model": "anthropic/claude-sonnet-4",
-                "max_tokens": 2048,
-                "messages": [
-                    {"role": "system", "content": system_message},
-                    {"role": "user", "content": user_text},
-                ],
-            },
-        )
-        if resp.status_code != 200:
+        for model in models_to_try:
+            logging.info(f"LLM request using model: {model}")
+            resp = await http_client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "http://localhost:3000",
+                    "X-Title": "WordRush",
+                },
+                json={
+                    "model": model,
+                    "max_tokens": 2048,
+                    "messages": [
+                        {"role": "system", "content": system_message},
+                        {"role": "user", "content": user_text},
+                    ],
+                },
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                logging.info(f"LLM response OK from model: {model}")
+                return data["choices"][0]["message"]["content"]
+
+            # Retry with fallback on payment/rate-limit errors
+            if resp.status_code in (402, 429, 503) and model != models_to_try[-1]:
+                logging.warning(f"Model {model} returned {resp.status_code}, trying fallback...")
+                last_error = resp.status_code
+                continue
+
             logging.error(f"OpenRouter API error {resp.status_code}: {resp.text}")
             raise HTTPException(status_code=502, detail=f"LLM API error: {resp.status_code}")
-        data = resp.json()
-        return data["choices"][0]["message"]["content"]
+
+    raise HTTPException(status_code=502, detail=f"All LLM models failed (last error: {last_error})")
 
 
 def _hash_pw(pw: str) -> str:
@@ -137,12 +158,53 @@ class PassageResponse(BaseModel):
 class CodeSnippetRequest(BaseModel):
     language: Literal["python", "javascript", "typescript", "java", "go", "rust", "css", "html"] = "python"
     difficulty: Literal["easy", "medium", "hard"] = "easy"
+    topic: Optional[str] = None
 
 
 class CodeSnippetResponse(BaseModel):
     language: str
     snippet: str
     description: str
+    explanation: Optional[str] = None
+
+
+class ChallengeQuestion(BaseModel):
+    question: str
+    options: List[str]
+    answer_index: int
+    explanation: str = ""
+
+
+class ChallengeRequest(BaseModel):
+    language: Literal["python", "javascript", "typescript", "java", "go", "rust"] = "python"
+    difficulty: Literal["easy", "medium", "hard"] = "easy"
+    topic: Optional[str] = None
+
+
+class ChallengeResponse(BaseModel):
+    snippet: str
+    language: str
+    description: str
+    questions: List[ChallengeQuestion]
+
+
+class LessonRequest(BaseModel):
+    language: Literal["python", "javascript", "typescript", "java", "go", "rust"] = "python"
+    topic: Literal[
+        "variables", "loops", "functions", "conditionals", "arrays",
+        "strings", "error_handling", "classes", "algorithms", "patterns"
+    ] = "variables"
+    difficulty: Literal["easy", "medium", "hard"] = "easy"
+
+
+class LessonResponse(BaseModel):
+    topic: str
+    language: str
+    explanation: str
+    example_code: str
+    practice_snippet: str
+    practice_description: str
+    tips: List[str] = Field(default_factory=list)
 
 
 class SignupRequest(BaseModel):
@@ -173,7 +235,11 @@ class StatsModel(BaseModel):
     flash: dict = Field(default_factory=lambda: {"played": 0, "correct": 0, "total": 0, "best": 0})
     speed: dict = Field(default_factory=lambda: {"played": 0, "correct": 0, "total": 0, "bestWpm": 0})
     match: dict = Field(default_factory=lambda: {"played": 0, "bestTime": None, "totalMoves": 0})
-    code: dict = Field(default_factory=lambda: {"played": 0, "bestWpm": 0, "bestAccuracy": 0})
+    code: dict = Field(default_factory=lambda: {
+        "played": 0, "bestWpm": 0, "bestAccuracy": 0,
+        "challengesPlayed": 0, "challengeScore": 0,
+        "lessonsCompleted": 0, "topicsCompleted": []
+    })
     streak: dict = Field(default_factory=lambda: {"current": 0, "longest": 0, "last_day": None})
     history: List[dict] = Field(default_factory=list)
     achievements: List[str] = Field(default_factory=list)
@@ -326,14 +392,16 @@ async def generate_passage(req: PassageRequest):
 @api_router.post("/generate-code", response_model=CodeSnippetResponse)
 async def generate_code(req: CodeSnippetRequest):
     line_target = {"easy": "3-5", "medium": "6-9", "hard": "10-14"}[req.difficulty]
+    topic_hint = f" related to '{req.topic}'" if req.topic else ""
     system = (
         "You are a senior engineer writing short, idiomatic, READABLE code snippets for a "
         "Speed Code typing exercise. Return ONLY valid JSON. Do NOT use markdown fences."
     )
     user = (
         f"Write a {req.difficulty} {req.language} code snippet, {line_target} lines, that does "
-        f"something useful and tiny. Use real indentation. Avoid trailing whitespace. "
-        f'Output strictly as JSON: {{"language":"{req.language}","snippet":"...","description":"one sentence"}}'
+        f"something useful and tiny{topic_hint}. Use real indentation. Avoid trailing whitespace. "
+        f'Output strictly as JSON: {{"language":"{req.language}","snippet":"...","description":"one sentence",'
+        f'"explanation":"2-3 sentences explaining what the code does and why, for a learner"}}'
     )
     try:
         raw = await _llm_chat(system, user)
@@ -343,6 +411,86 @@ async def generate_code(req: CodeSnippetRequest):
         raise
     except Exception as e:
         logging.exception("generate_code failed")
+        raise HTTPException(status_code=502, detail=f"LLM generation failed: {e}")
+
+
+@api_router.post("/generate-challenge", response_model=ChallengeResponse)
+async def generate_challenge(req: ChallengeRequest):
+    topic_hint = f" related to '{req.topic}'" if req.topic else ""
+    line_target = {"easy": "4-6", "medium": "7-12", "hard": "13-20"}[req.difficulty]
+    system = (
+        "You are a senior software engineer creating code comprehension challenges. "
+        "You write a code snippet and 3 multiple-choice questions about what the code does. "
+        "Questions should test: output prediction, bug identification, or behavior analysis. "
+        "Return ONLY valid JSON. Do NOT use markdown fences."
+    )
+    user = (
+        f"Write a {req.difficulty} {req.language} code snippet, {line_target} lines{topic_hint}. "
+        f"Then write 3 multiple-choice questions about it, each with 4 options and the correct answer index. "
+        f"Each question must include a brief explanation of why the answer is correct. "
+        f'Output strictly as JSON: '
+        f'{{"snippet":"...","language":"{req.language}","description":"one sentence summary",'
+        f'"questions":[{{"question":"...","options":["a","b","c","d"],"answer_index":0,"explanation":"why this is correct"}}]}}'
+    )
+    try:
+        raw = await _llm_chat(system, user)
+        data = _extract_json(raw)
+        return ChallengeResponse(
+            snippet=data["snippet"],
+            language=data.get("language", req.language),
+            description=data.get("description", ""),
+            questions=[ChallengeQuestion(**q) for q in data["questions"]][:3],
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception("generate_challenge failed")
+        raise HTTPException(status_code=502, detail=f"LLM generation failed: {e}")
+
+
+LESSON_TOPICS_DISPLAY = {
+    "variables": "Variables & Data Types",
+    "loops": "Loops & Iteration",
+    "functions": "Functions & Parameters",
+    "conditionals": "Conditionals & Logic",
+    "arrays": "Arrays & Lists",
+    "strings": "String Operations",
+    "error_handling": "Error Handling",
+    "classes": "Classes & Objects",
+    "algorithms": "Basic Algorithms",
+    "patterns": "Design Patterns",
+}
+
+
+@api_router.post("/generate-lesson", response_model=LessonResponse)
+async def generate_lesson(req: LessonRequest):
+    topic_display = LESSON_TOPICS_DISPLAY.get(req.topic, req.topic)
+    system = (
+        "You are a patient, expert programming tutor creating concise mini-lessons. "
+        "Each lesson has: a clear explanation, a commented code example, and a practice snippet for typing. "
+        "Return ONLY valid JSON. Do NOT use markdown fences."
+    )
+    user = (
+        f"Create a {req.difficulty} mini-lesson about '{topic_display}' in {req.language}. "
+        f"Include:\n"
+        f"1. 'explanation': 2-3 paragraphs explaining the concept clearly for a beginner to intermediate learner.\n"
+        f"2. 'example_code': A well-commented {req.language} code example (5-10 lines) demonstrating the concept.\n"
+        f"3. 'practice_snippet': A short {req.language} snippet (3-8 lines) for the learner to type as practice. "
+        f"This should use the concept just taught. Use real indentation. No trailing whitespace.\n"
+        f"4. 'practice_description': One sentence describing what the practice snippet does.\n"
+        f"5. 'tips': An array of 2-3 short practical tips about this topic.\n"
+        f'Output strictly as JSON: '
+        f'{{"topic":"{req.topic}","language":"{req.language}","explanation":"...","example_code":"...",'
+        f'"practice_snippet":"...","practice_description":"...","tips":["tip1","tip2"]}}'
+    )
+    try:
+        raw = await _llm_chat(system, user)
+        data = _extract_json(raw)
+        return LessonResponse(**data)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception("generate_lesson failed")
         raise HTTPException(status_code=502, detail=f"LLM generation failed: {e}")
 
 
