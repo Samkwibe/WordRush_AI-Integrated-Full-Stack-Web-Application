@@ -73,7 +73,7 @@ Built with a **React 19 frontend** and **Python FastAPI backend**, WordRush inte
         └──────────────────┘        └──────────────────┘
 ````
 [![Architecture diagram](https://gitdiagram.com/diagram-badge.svg)](https://gitdiagram.com/samkwibe/wordrush_ai-integrated-full-stack-web-application?utm_source=readme&utm_medium=badge)
-
+[![Architecture diagram of samkwibe/wordrush_ai-integrated-full-stack-web-application](https://gitdiagram.com/samkwibe/wordrush_ai-integrated-full-stack-web-application/diagram.png)](https://gitdiagram.com/samkwibe/wordrush_ai-integrated-full-stack-web-application?utm_source=readme&utm_medium=picture)
 ---
 
 ## 🔐 Authentication
