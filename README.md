@@ -72,6 +72,7 @@ Built with a **React 19 frontend** and **Python FastAPI backend**, WordRush inte
         │ Leaderboard      │        │ Fallback Model   │
         └──────────────────┘        └──────────────────┘
 ````
+[![Architecture diagram](https://gitdiagram.com/diagram-badge.svg)](https://gitdiagram.com/samkwibe/wordrush_ai-integrated-full-stack-web-application?utm_source=readme&utm_medium=badge)
 
 ---
 
